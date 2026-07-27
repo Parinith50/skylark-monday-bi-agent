@@ -3,12 +3,14 @@ import pandas as pd
 
 def summarize(df: pd.DataFrame):
 
-    summary = {
-        "rows": len(df),
-        "missing_values": int(df.isna().sum().sum())
-    }
+    df = df.copy()
 
-    # ---------- Deal Status ----------
+    df = df.fillna("Unknown")
+
+    status_summary = {}
+    sector_summary = {}
+
+    # ---------- STATUS ----------
     status_col = None
 
     for col in df.columns:
@@ -17,17 +19,24 @@ def summarize(df: pd.DataFrame):
             break
 
     if status_col:
-        summary["status_summary"] = (
+
+        invalid = [
+            "",
+            "Status",
+            "Deal Status",
+            "Unknown",
+            "status"
+        ]
+
+        status_summary = (
             df[status_col]
-            .replace("", "Unknown")
-            .fillna("Unknown")
+            .replace(invalid, pd.NA)
+            .dropna()
             .value_counts()
             .to_dict()
         )
-    else:
-        summary["status_summary"] = {}
 
-    # ---------- Sector ----------
+    # ---------- SECTOR ----------
     sector_col = None
 
     for col in df.columns:
@@ -36,41 +45,29 @@ def summarize(df: pd.DataFrame):
             break
 
     if sector_col:
-        summary["sector_summary"] = (
+
+        invalid = [
+            "",
+            "Sector",
+            "Sector/service",
+            "Unknown"
+        ]
+
+        sector_summary = (
             df[sector_col]
-            .replace("", "Unknown")
-            .fillna("Unknown")
+            .replace(invalid, pd.NA)
+            .dropna()
             .value_counts()
             .to_dict()
         )
-    else:
-        summary["sector_summary"] = {}
 
-    # ---------- Deal Value ----------
-    value_col = None
+    return {
 
-    for col in df.columns:
-        if "value" in col.lower():
-            value_col = col
-            break
+        "rows": len(df),
 
-    if value_col:
+        "status_summary": status_summary,
 
-        values = (
-            df[value_col]
-            .astype(str)
-            .str.replace(",", "", regex=False)
-            .str.replace("$", "", regex=False)
-        )
+        "sector_summary": sector_summary,
 
-        values = pd.to_numeric(values, errors="coerce")
-
-        summary["total_pipeline_value"] = float(values.sum())
-        summary["average_deal_value"] = float(values.mean())
-
-    else:
-
-        summary["total_pipeline_value"] = 0
-        summary["average_deal_value"] = 0
-
-    return summary
+        "missing_values": int(df.isna().sum().sum())
+    }
